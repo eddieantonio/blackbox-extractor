@@ -18,10 +18,12 @@
 # <http://www.gnu.org/licenses/>.
 
 
-import sys
-import struct
+import argparse
 import os
 import platform
+import struct
+import sys
+
 from collections import namedtuple
 from contextlib import closing
 
@@ -35,11 +37,6 @@ config = {
     'host': '127.0.0.1',
     'database': 'blackbox_production'
 }
-
-if platform.node() == 'mbp.local':
-    DIRECTORY = os.path.dirname(os.path.abspath(__file__))
-else:
-    DIRECTORY = '/data/compile-inputs'
 
 
 # From the BlueJ Blackbox Data Collection Researchers' Handbook, Section 9.1.
@@ -112,7 +109,7 @@ def date_of(master_event_id):
 
 
 def path_of(name):
-    return os.path.join(DIRECTORY, name)
+    return os.path.join(base_directory, name)
 
 
 def open_index(datestr):
@@ -135,10 +132,40 @@ def test():
         source_code = lookup(1246, 35238)
         assert len(source_code) == 9734
 
-def main():
+
+def main(source_file_id, master_event_id):
+    global cnx
     with closing(mysql.connector.connect(**config)) as cnx:
-        source_code = lookup(1246, 35238)
+        source_code = lookup(source_file_id, master_event_id)
+    # Reopen output in binary mode to prevent pipes from breaking from weird
+    # implict encoding conversion.
+    sys.stdout = os.fdopen(sys.stdout.fileno(), 'wb')
     sys.stdout.write(source_code)
 
+
+# Set up the argument parser
+if platform.node() == 'mbp.local':
+    default_directory = os.path.dirname(os.path.abspath(__file__))
+else:
+    default_directory = '/data/compile-inputs'
+
+parser = argparse.ArgumentParser(
+    description='Prints source code at a particular revision'
+)
+parser.add_argument('directory', nargs='?', default=default_directory,
+                    help='Location of the index- and payload- files')
+parser.add_argument('source_file_id', type=int,
+                    help='ID in the source_files table')
+parser.add_argument('master_event_id', type=int,
+                    help='ID in the master_events table')
+
+
 if __name__ == '__main__':
-    test()
+    # Bypass the argument parser for simplicity.
+    if '--test' in sys.argv:
+        base_directory = default_directory
+        test()
+    else:
+        args = parser.parse_args()
+        base_directory = args.directory
+        main(args.source_file_id, args.master_event_id)
