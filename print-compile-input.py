@@ -17,6 +17,11 @@
 # License along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 
+"""
+Prints source code at a particular revision.
+
+A reimplementation of /tools/ncc/bin/print-compile-input.
+"""
 
 import argparse
 import os
