@@ -20,6 +20,8 @@
 
 import argparse
 import datetime
+
+import sys
 from blackbox_connection import mysql_connection
 
 
@@ -30,7 +32,6 @@ def to_date(string):
 parser = argparse.ArgumentParser(description='List session IDs')
 parser.add_argument('until', type=to_date,
                     help="Date to stop collecting sessions in ISO 8601 format")
-
 
 if __name__ == '__main__':
     args = parser.parse_args()
