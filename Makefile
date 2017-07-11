@@ -1,6 +1,6 @@
-SCRIPTS = print-compile-input.py
+SCRIPTS = print-compile-input.py list-all-sessions.py
 
 upload: $(SCRIPTS)
-	rsync $^ blackbox:~/tools/bin/
+	rsync -avp $^ blackbox:~/tools/bin/
 
 .PHONY: upload

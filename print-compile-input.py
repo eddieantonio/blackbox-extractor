@@ -28,20 +28,10 @@ import os
 import platform
 import struct
 import sys
-
 from collections import namedtuple
 from contextlib import closing
 
-import mysql.connector
-from mysql.connector import errorcode
-
-
-config = {
-    'user': 'whitebox',
-    'password': 'ivorycube',
-    'host': '127.0.0.1',
-    'database': 'blackbox_production'
-}
+from blackbox_connection import mysql_connection
 
 
 # From the BlueJ Blackbox Data Collection Researchers' Handbook, Section 9.1.
@@ -131,7 +121,7 @@ def get_index(master_event_id):
 
 def test():
     global cnx
-    with closing(mysql.connector.connect(**config)) as cnx:
+    with mysql_connection() as cnx:
         index = get_index(35238)
         assert len(index) == 174752 / 32
         source_code = lookup(1246, 35238)
@@ -140,7 +130,7 @@ def test():
 
 def main(source_file_id, master_event_id):
     global cnx
-    with closing(mysql.connector.connect(**config)) as cnx:
+    with mysql_connection() as cnx:
         source_code = lookup(source_file_id, master_event_id)
     # Reopen output in binary mode to prevent pipes from breaking from weird
     # implict encoding conversion.
