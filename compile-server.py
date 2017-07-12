@@ -19,6 +19,7 @@
 
 import os
 import traceback
+import logging
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 from collections import namedtuple
 from urlparse import urlparse, parse_qs
@@ -40,6 +41,7 @@ class BigIndex(object):
         self._table = {}
         self._meid2date = {}
         self.path = path
+        self.logger = logging.getLogger(type(self).__name__)
 
     def __getitem__(self, key):
         # Returns the source for the given source file at the revision
@@ -73,6 +75,7 @@ class BigIndex(object):
         Cached version of date retreival for a master_events id.
         """
         if master_event_id not in self._meid2date:
+            self.logger.info("Fetching date of %d", master_event_id)
             self._meid2date[master_event_id] = date_of(master_event_id, cnx)
         return self._meid2date[master_event_id]
 
@@ -81,8 +84,11 @@ class BigIndex(object):
         Once a date is requested for the first time, the index for the entire
         date is loaded.
         """
+        self.logger.info("Loading index for %s", datestr)
+
         table = self._table
         meid2date = self._meid2date
+
         filename = self.path_to('index-' + datestr)
         with open(filename, "rb") as index_file:
             for entry in IndexEntry.entries_from_file(index_file):
@@ -90,6 +96,7 @@ class BigIndex(object):
                                          size=entry.length,
                                          date=datestr)
                 meid2date[entry.master_event_id] = datestr
+        self.logger.debug("New index size: %d", len(table))
 
 
 class BlackBoxRequestHandler(BaseHTTPRequestHandler):
@@ -136,5 +143,6 @@ def run(path):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     with mysql_connection() as cnx:
         run(os.path.abspath('.'))
