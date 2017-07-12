@@ -26,39 +26,12 @@ A reimplementation of /tools/ncc/bin/print-compile-input.
 import argparse
 import os
 import platform
-import struct
 import sys
-from collections import namedtuple
-from contextlib import closing
 
 from blackbox_connection import mysql_connection
 
-
-# From the BlueJ Blackbox Data Collection Researchers' Handbook, Section 9.1.
-# • 64-bit integer for source file id. (Corresponds to “id” column in
-#   source_files table (see Section 3.7 on page 27).)
-# • 64-bit integer for master event id for the compilation event. (Corresponds
-#   to “id” column in master_events table (see chapter 2 on page 11).)
-# • 64-bit integer for the starting position within the payload file. (Byte
-#   position in file, not character position in UTF8 string.)
-# • 32-bit integer for the length within the payload file. (Again, byte
-#   length, not character length.)
-# • 32-bit integer that is 1 if the compile was successful, 0 if it was an
-#   error. (Copied from database for easy reference.)
-index_fmt = struct.Struct('>QQQII')
-assert index_fmt.size == 32
-
-
-_IndexEntry = namedtuple('_IndexEntry', 'source_file_id master_event_id start length success')
-
-class IndexEntry(_IndexEntry):
-    @classmethod
-    def from_file(cls, index_file):
-        return cls(*index_fmt.unpack(index_file.read(index_fmt.size)))
-
-    @property
-    def key(self):
-        return self.source_file_id, self.master_event_id
+from section_9 import IndexEntry
+from section_9 import date_of as date_of_original
 
 
 class Index(object):
@@ -66,11 +39,7 @@ class Index(object):
         self.datestr = datestr
         table = self.table = {}
         with open_index(datestr) as index_file:
-            while True:
-                try:
-                    entry = IndexEntry.from_file(index_file)
-                except struct.error:
-                    break
+            for entry in IndexEntry.entries_from_file(index_file):
                 table[entry.key] = entry
 
     def __getitem__(self, key):
@@ -88,23 +57,15 @@ def lookup(source_file_id, master_event_id):
     return index[source_file_id, master_event_id]
 
 
-def date_of(master_event_id):
-    """
-    >>> date_of(35238)
-    '2013-06-12'
-    """
-    with closing(cnx.cursor()) as cur:
-        cur.execute("""
-            SELECT DATE(created_at)
-              FROM master_events
-             WHERE id = %s
-        """, [master_event_id])
-        row, = cur.fetchall()
-        return str(row[0])
-
-
 def path_of(name):
     return os.path.join(base_directory, name)
+
+
+def date_of(master_event_id):
+    """
+    Return the ISO 8601 date of the master_events id.
+    """
+    return date_of_original(master_event_id, cnx)
 
 
 def open_index(datestr):
@@ -126,6 +87,7 @@ def test():
         assert len(index) == 174752 / 32
         source_code = lookup(1246, 35238)
         assert len(source_code) == 9734
+    print("Tests passed.")
 
 
 def main(source_file_id, master_event_id):

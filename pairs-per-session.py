@@ -17,6 +17,14 @@
 # License along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 
+"""
+Prints a TSV file of pairs of **potential** errors (before and after it gets
+fixed). The pairs must be verified by parsing them, and asserting the
+difference is a single lexeme.
+
+Each source snapshot can be obtained using print-compile-input.py.
+"""
+
 import sys
 from contextlib import closing
 from collections import namedtuple
@@ -69,4 +77,4 @@ if __name__ == '__main__':
         for session_id in sessions():
             # Prints source file, and TWO master_events IDs.
             for source_file, before, after in find_pairs_in_session(session_id):
-                print('%d,%d,%d' % (source_file, before, after))
+                print('%d\t%d\t%d' % (source_file, before, after))
