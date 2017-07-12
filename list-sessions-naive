@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# SELECT session_id FROM master_events
+#  WHERE created_at < DATE('2017-07-01')
+#  ORDER BY created_at DESC LIMIT 1;
+seq 1 26909926

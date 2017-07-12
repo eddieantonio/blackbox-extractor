@@ -20,6 +20,7 @@
 
 import argparse
 import datetime
+from contextlib import closing
 
 import sys
 from blackbox_connection import mysql_connection
@@ -36,17 +37,12 @@ parser.add_argument('until', type=to_date,
 if __name__ == '__main__':
     args = parser.parse_args()
     with mysql_connection() as cnx:
-        cursor = cnx.cursor()
-        try:
+        with closing(cnx.cursor()) as cursor:
             cursor.execute('''
-                SELECT DISTINCT session_id
+                SELECT session_id
                   FROM master_events
-                WHERE created_at < %s
+                 WHERE event_type = 'CompileEvent'
+                   AND created_at < DATE(%s)
             ''', (args.until,))
-        except KeyboardInterrupt:
-            exit(-1)
-        else:
             for session_id, in cursor:
                 print(session_id)
-        finally:
-            cursor.close()
