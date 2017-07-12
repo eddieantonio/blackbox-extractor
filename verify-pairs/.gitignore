@@ -1,0 +1,3 @@
+.cache
+.mypy_cache
+java-mistakes.sqlite3
