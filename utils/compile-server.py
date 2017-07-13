@@ -42,6 +42,7 @@ class BigIndex(object):
         self._meid2date = {}
         self.path = path
         self.logger = logging.getLogger(type(self).__name__)
+        self.logger.info("Will load DB files from %s", self.path)
 
     def __getitem__(self, key):
         # Returns the source for the given source file at the revision
@@ -154,4 +155,4 @@ if __name__ == '__main__':
         path = '/data/compile-inputs'
 
     with mysql_connection() as cnx:
-        run(os.path.abspath('.'))
+        run(path)
