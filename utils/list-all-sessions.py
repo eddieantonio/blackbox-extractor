@@ -33,6 +33,8 @@ def to_date(string):
 parser = argparse.ArgumentParser(description='List session IDs')
 parser.add_argument('until', type=to_date,
                     help="Date to stop collecting sessions in ISO 8601 format")
+parser.add_argument('minimum', type=int, default=0,
+                    help="Minimum sequence number")
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -43,6 +45,7 @@ if __name__ == '__main__':
                   FROM master_events
                  WHERE event_type = 'CompileEvent'
                    AND created_at < DATE(%s)
-            ''', (args.until,))
+                   AND session_id > %s
+            ''', (args.until, args.minimum))
             for session_id, in cursor:
                 print(session_id)
