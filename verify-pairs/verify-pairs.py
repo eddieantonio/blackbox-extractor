@@ -35,10 +35,11 @@ SCHEMA = """
 -- Insert "valid" mistakes here.
 CREATE TABLE IF NOT EXISTS mistake (
     source_file_id  INT,
-    master_event_id INT,
+    before_id       INT,
+    after_id        INT,
     before          BLOB,
     after           BLOB,
-    PRIMARY KEY (source_file_id, master_event_id)
+    PRIMARY KEY (source_file_id, before_id)
 );
 """
 
@@ -114,12 +115,12 @@ class Mistakes:
         Insert the before/after source code into the database.
         """
         with self.conn:
-            sfid, meid = pair.key  # type: Tuple[SFID, MEID]
             self.conn.execute("""
                 INSERT INTO mistake
-                (source_file_id, master_event_id, before, after)
-                VALUES (?, ?, ?, ?)
-            """, (sfid, meid, before, after))
+                (source_file_id, before_id, after_id, before, after)
+                VALUES (?, ?, ?, ?, ?)
+            """, (pair.source_file_id, pair.before_id, pair.after_id,
+                  before, after))
 
 
 def fetch_source(revision: Revision) -> bytes:
@@ -153,13 +154,6 @@ def _good_pair(before: bytes, after: bytes) -> bool:
 
     if java.check_syntax(after) is False:
         logger.info("Rejecting: after has invalid syntax")
-        return False
-
-    tokens_before = count(java.tokenize(before))
-    tokens_after = count(java.tokenize(after))
-
-    if tokens_before - tokens_after not in {-1, 0, 1}:
-        logger.info("Rejecting: difference too large")
         return False
 
     return True
@@ -198,6 +192,10 @@ def test():
     assert not good_pair(bad_source, bad_source)
     assert not good_pair(good_source, good_source)
     assert not good_pair(good_source, bad_source)
+
+    # It used to be the case that we would reject files that are too
+    # different right away, now token-wise Levenshtien distance is a
+    # postprocessing step instead.
     good_source_too_different = """
     class Hello {
         public static void main (String args[]) {
@@ -205,7 +203,7 @@ def test():
     }
     """
     assert java.check_syntax(good_source_too_different)
-    assert not good_pair(bad_source, good_source_too_different)
+    assert good_pair(bad_source, good_source_too_different)
 
     # Try insertion.
     bad_source = """
