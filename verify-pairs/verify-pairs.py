@@ -85,8 +85,8 @@ class Mistakes:
         cursor = self.conn.execute('''
             SELECT COUNT(*)
               FROM mistake
-             WHERE source_file_id = ? AND master_event_id = ?
-        ''', pair.key)
+             WHERE source_file_id = ? AND before_id = ?
+        ''', pair.before)
         answer, = cursor.fetchone()
         return answer > 0
 
