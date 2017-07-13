@@ -17,6 +17,7 @@
 # License along with this program.  If not, see
 # <http://www.gnu.org/licenses/>.
 
+import logging
 import sqlite3
 import sys
 from typing import Iterable, Tuple, NewType
@@ -41,10 +42,11 @@ CREATE TABLE IF NOT EXISTS mistake (
 );
 """
 
+
 class Pair:
     __slots__ = 'source_file_id', 'before_id', 'after_id'
-    def __init__(self, source_file_id: SFID, before: MEID, after: MEID) -> None:
-        self.source_file_id = source_file_id
+    def __init__(self, sfid: SFID, before: MEID, after: MEID) -> None:
+        self.source_file_id = sfid
         self.before_id = before
         self.after_id = after
 
@@ -54,33 +56,63 @@ class Pair:
 
     @property
     def after(self) -> Revision:
-        return self.source_file_id, self.before_id
+        return self.source_file_id, self.after_id
 
     @property
     def key(self) -> Revision:
         return self.before
 
+    def __repr__(self) -> str:
+        return "<sfid={:d} before={:d} after={:d}>".format(
+            self.source_file_id, self.before_id, self.after_id
+        )
+
 
 class Mistakes:
+    """
+    Stores mistakes in a database.
+    """
     def __init__(self) -> None:
         self.conn = sqlite3.connect("java-mistakes.sqlite3")
         self.conn.executescript(SCHEMA)
+        self.logger = logging.getLogger(type(self).__name__)
+
+    def pair_exists(self, pair: Pair) -> bool:
+        """
+        Return True if the pair was already found in the database.
+        """
+        cursor = self.conn.execute('''
+            SELECT COUNT(*)
+              FROM mistake
+             WHERE source_file_id = ? AND master_event_id = ?
+        ''', pair.key)
+        answer, = cursor.fetchone()
+        return answer > 0
 
     def try_pair(self, pair: Pair) -> None:
         """
-        Try to download a before and after pair.
+        Try to download and verify a before/after pair.
         """
+        if self.pair_exists(pair):
+            self.logger.info("Pair exists: %r", pair)
+            return
+
         try:
             source_before = fetch_source(pair.before)
             source_after = fetch_source(pair.after)
         except requests.exceptions.HTTPError:
-            # TODO: log
+            self.logger.warn("Not found: %r", pair)
             return
 
+        self.logger.info("Checking %r", pair)
         if good_pair(source_before, source_after):
+            self.logger.info("Inserting: %r", pair)
             self.insert(pair, source_before, source_after)
 
     def insert(self, pair: Pair, before: bytes, after: bytes) -> None:
+        """
+        Insert the before/after source code into the database.
+        """
         with self.conn:
             sfid, meid = pair.key  # type: Tuple[SFID, MEID]
             self.conn.execute("""
@@ -114,16 +146,20 @@ def good_pair(before: bytes, after: bytes) -> bool:
 
 
 def _good_pair(before: bytes, after: bytes) -> bool:
+    logger = logging.getLogger('good_pair')
     if java.check_syntax(before) is True:
+        logger.info("Rejecting: before has valid syntax")
         return False
 
     if java.check_syntax(after) is False:
+        logger.info("Rejecting: after has invalid syntax")
         return False
 
     tokens_before = count(java.tokenize(before))
     tokens_after = count(java.tokenize(after))
 
     if tokens_before - tokens_after not in {-1, 0, 1}:
+        logger.info("Rejecting: difference too large")
         return False
 
     return True
@@ -141,11 +177,11 @@ def pairs() -> Iterable[Pair]:
         line = line.strip()
         if not line:
             continue
-        sfid, before_id, after_id = line.split()
         try:
+            sfid, before_id, after_id = line.split()
             yield Pair(SFID(int(sfid)), MEID(int(before_id)), MEID(int(after_id)))
         except ValueError:
-            # TODO: log
+            logging.warn("Invalid pair: %r", line)
             continue
 
 
@@ -192,8 +228,15 @@ def test():
     assert not good_pair(good_source, bad_source)
 
 
-
-if __name__ == '__main__':
+def main():
     mistakes = Mistakes()
     for pair in pairs():
         mistakes.try_pair(pair)
+
+
+if __name__ == '__main__':
+    if '--test' in sys.argv[1:]:
+        test()
+    else:
+        logging.basicConfig(level=logging.INFO)
+        main()
