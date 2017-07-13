@@ -65,7 +65,7 @@ def yield_pairs(events):
 
 
 def sessions():
-    for line in sys.stdin.readlines():
+    for line in sys.stdin:
         line = line.strip()
         if line == '':
             continue
