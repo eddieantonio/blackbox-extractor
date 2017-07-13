@@ -144,5 +144,14 @@ def run(path):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
+
+    # Allows for debugging on my laptop, but will use the appropriate
+    # directory on white.kent.ac.uk.
+    import platform
+    if platform.node() == 'mbp.local':
+        path = os.path.dirname(os.path.abspath(__file__))
+    else:
+        path = '/data/compile-inputs'
+
     with mysql_connection() as cnx:
         run(os.path.abspath('.'))
