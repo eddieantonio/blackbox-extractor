@@ -17,11 +17,10 @@ Revision = Tuple[SFID, MEID]
 
 # To work along side java-mistakes.sqlite3
 SCHEMA = r"""
-CREATE TABLE IF NOT EXISTS distance (
+CREATE TABLE IF NOT EXISTS distance(
     source_file_id  INT,
     before_id       INT,
     levenshtein     INT,
-    bow_distance    INT,
     PRIMARY KEY (source_file_id, before_id)
 );
 """
@@ -39,19 +38,21 @@ class Mistake:
         self.after = after
 
 
-# TODO: factor out with verify-pair?
+# TODO: factor out with class from verify-pair?
 class Mistakes(Iterable[Mistake]):
     def __init__(self, conn: sqlite3.Connection) -> None:
         self.conn = conn
-        self.conn.executescript(SCHEMA)
+        #self.conn.executescript(SCHEMA)
 
     def __iter__(self) -> Iterator[Mistake]:
-        yield Mistake(SFID(0), MEID(0), b'', b'')
+        query = '''SELECT source_file_id, before_id, before, after FROM mistake'''
+        for row in self.conn.execute(query):
+            yield Mistake(*row)
 
 
 def tokens2seq(tokens: Iterable[Lexeme],
-              to_index = vocabulary.to_index,
-              to_entry = java2sensibility) -> str:
+               to_index=vocabulary.to_index,
+               to_entry=java2sensibility) -> str:
     """
     Converts a sequence of tokens into a special string
     """
@@ -65,7 +66,7 @@ def tokens2seq(tokens: Iterable[Lexeme],
 def tokenwise_distance(file_a: bytes, file_b: bytes) -> int:
     seq_a = tokens2seq(java.tokenize(file_a))
     seq_b = tokens2seq(java.tokenize(file_b))
-    # TODO: use editops instead!
+    # TODO: use editops as a post-processing step!
     return distance(seq_a, seq_b)
 
 
@@ -76,3 +77,9 @@ def test() -> None:
     assert 0 == tokenwise_distance(b'class Hello {}',   b'class Hello {}')
 
     assert 2 >= tokenwise_distance(b'enum Hello {}',    b'class Hello {')
+
+
+def test_get_source() -> None:
+    m = Mistakes(sqlite3.connect('java-mistakes.sqlite3'))
+    mistake = next(iter(m))
+    assert 0 < tokenwise_distance(mistake.before, mistake.after)
