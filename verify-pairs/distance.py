@@ -42,12 +42,19 @@ class Mistake:
 class Mistakes(Iterable[Mistake]):
     def __init__(self, conn: sqlite3.Connection) -> None:
         self.conn = conn
-        #self.conn.executescript(SCHEMA)
+        self.conn.executescript(SCHEMA)
 
     def __iter__(self) -> Iterator[Mistake]:
         query = '''SELECT source_file_id, before_id, before, after FROM mistake'''
         for row in self.conn.execute(query):
             yield Mistake(*row)
+
+    def insert_distance(self, m: Mistake, dist: int) -> None:
+        with self.conn:
+            self.conn.execute('''
+                INSERT INTO distance(source_file_id, before_id, levenshtein)
+                VALUES (?, ?, ?)
+            ''', (m.sfid, m.meid, dist))
 
 
 def tokens2seq(tokens: Iterable[Lexeme],
@@ -56,7 +63,10 @@ def tokens2seq(tokens: Iterable[Lexeme],
     """
     Converts a sequence of tokens into a special string
     """
-    # Maps each vocabulary entry to a codepoint in the private use area.
+    # Injective maps of each vocabulary entry to a codepoint in the private
+    # use area.
+    # distance() works on codepoints, so this effectively makes distance()
+    # work on token classes.
     return ''.join(
         chr(PUA_B_START + to_index(to_entry(token)))
         for token in tokens
@@ -83,3 +93,11 @@ def test_get_source() -> None:
     m = Mistakes(sqlite3.connect('java-mistakes.sqlite3'))
     mistake = next(iter(m))
     assert 0 < tokenwise_distance(mistake.before, mistake.after)
+
+
+if __name__ == '__main__':
+    conn = sqlite3.connect('java-mistakes.sqlite3')
+    mistakes = Mistakes(conn)
+    for mistake in mistakes:
+        dist = tokenwise_distance(mistake.before, mistake.after)
+        mistakes.insert_distance(mistake, dist)
