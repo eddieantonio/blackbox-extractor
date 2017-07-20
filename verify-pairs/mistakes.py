@@ -87,6 +87,9 @@ class Mistake:
         self.before = before
         self.after = after
 
+    def __repr__(self) -> str:
+        return '<mistake sfid=%d, mfid=%d>' % (self.sfid, self.meid)
+
 
 class Mistakes(Iterable[Mistake]):
     """
