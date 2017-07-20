@@ -1,3 +1,5 @@
 .cache
 .mypy_cache
 java-mistakes.sqlite3
+.python-version
+__pycache__/
