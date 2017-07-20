@@ -97,6 +97,14 @@ def test() -> None:
     assert 2 >= tokenwise_distance(b'enum Hello {}',    b'class Hello {')
 
 
+def test_extra() -> None:
+    # Regression: Lexer should be able to handle const and goto keywords,
+    # even though Java does not use them.
+    # https://docs.oracle.com/javase/tutorial/java/nutsandbolts/_keywords.html
+    assert 1 == tokenwise_distance(b'const int hello;', b'final int hello;')
+    assert 1 == tokenwise_distance(b'goto label;', b'int label;')
+
+
 def test_get_source() -> None:
     m = Mistakes(sqlite3.connect('java-mistakes.sqlite3'))
     mistake = next(iter(m))
