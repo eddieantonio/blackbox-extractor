@@ -52,6 +52,17 @@ CREATE TABLE IF NOT EXISTS distance(
     levenshtein     INT,
     PRIMARY KEY (source_file_id, before_id)
 );
+
+CREATE TABLE IF NOT EXISTS edit(
+    source_file_id  INT,
+    before_id       INT,
+
+    edit            TEXT,
+    position        INT,
+    new_token       TEXT,
+
+    PRIMARY KEY (source_file_id, before_id)
+);
 """
 
 
@@ -123,6 +134,16 @@ class Mistakes(Iterable[Mistake]):
         for row in self.conn.execute(query):
             yield Mistake(*row)
 
+    @property
+    def eligible_mistakes(self) -> Iterator[Mistake]:
+        query = '''
+            SELECT source_file_id, before_id, before, after
+            FROM mistake NATURAL JOIN distance
+            WHERE levenshtein = 1
+            '''
+        for row in self.conn.execute(query):
+            yield Mistake(*row)
+
     def insert_distance(self, m: Mistake, dist: int) -> None:
         with self.conn:
             self.conn.execute('''
@@ -130,6 +151,13 @@ class Mistakes(Iterable[Mistake]):
                 VALUES (?, ?, ?)
             ''', (m.sfid, m.meid, dist))
 
+    def insert_edit(self, m: Mistake, edit: Edit) -> None:
+        with self.conn:
+            self.conn.execute('''
+                INSERT INTO edit(source_file_id, before_id, edit, position,
+                new_token)
+                VALUES (?, ?, ?)
+            ''', (m.sfid, m.meid, dist))
 
 def tokens2seq(tokens: Iterable[Lexeme],
                to_index=vocabulary.to_index,
