@@ -57,9 +57,9 @@ class EditType:
         return type(self).__name__
 
 
-Insertion = type('Insertion', (EditType,), {})()
-Deletion = type('Deletion', (EditType,), {})()
-Substitution = type('Substitution', (EditType,), {})()
+Insertion = type('Insertion', (EditType,), {'id': 'i'})()
+Deletion = type('Deletion', (EditType,), {'id': 'x'})()
+Substitution = type('Substitution', (EditType,), {'id': 's'})()
 
 
 # TODO: use Edit classes from sensibility?
@@ -128,4 +128,4 @@ class Mistakes(Iterable[Mistake]):
                     source_file_id, before_id, edit, position, new_token
                 )
                 VALUES (?, ?, ?, ?, ?)
-            ''', (m.sfid, m.meid, edit.type, edit.position, edit.new_token))
+            ''', (m.sfid, m.meid, edit.type.id, edit.position, edit.new_token))

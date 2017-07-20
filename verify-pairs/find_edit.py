@@ -36,6 +36,7 @@ from distance import determine_edit
 
 if __name__ == '__main__':
     logger = logging.getLogger('find_edit')
+    logging.basicConfig(filename="find_edit.log")
     conn = sqlite3.connect('java-mistakes.sqlite3')
     # HACK! Make writes super speedy by disregarding durability.
     conn.execute('PRAGMA synchronous = OFF')
