@@ -4,11 +4,19 @@
 import sqlite3
 from typing import Iterable, Iterator, Tuple, NewType
 
+try:
+    from tqdm import tqdm  # type: ignore
+except ImportError:
+    def tqdm(it, *_args, **_kwargs):
+        yield from it
+
 from Levenshtein import distance  # type: ignore
+from javalang.tokenizer import LexerError  # type: ignore
 
 from vocabulary import vocabulary
 from lexical_analysis import Lexeme
 from java import java, java2sensibility
+
 
 SFID = NewType('SFID', int)
 MEID = NewType('MEID', int)
@@ -97,7 +105,12 @@ def test_get_source() -> None:
 
 if __name__ == '__main__':
     conn = sqlite3.connect('java-mistakes.sqlite3')
+    # HACK! Make writes super speedy by disregarding durability.
+    conn.execute('PRAGMA synchronous = OFF')
     mistakes = Mistakes(conn)
-    for mistake in mistakes:
-        dist = tokenwise_distance(mistake.before, mistake.after)
+    for mistake in tqdm(mistakes):
+        try:
+            dist = tokenwise_distance(mistake.before, mistake.after)
+        except LexerError:
+            continue
         mistakes.insert_distance(mistake, dist)
