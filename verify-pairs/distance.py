@@ -35,64 +35,12 @@ except ImportError:
 from java import java, java2sensibility
 from lexical_analysis import Lexeme
 from vocabulary import vocabulary, Vind
-
-
-# Different types of IDs that are both just ints, but it's very important
-# that the IDs don't get confused for one-another.
-SFID = NewType('SFID', int)
-MEID = NewType('MEID', int)
-Revision = Tuple[SFID, MEID]
-
-
-# To work along side java-mistakes.sqlite3
-SCHEMA = r"""
-CREATE TABLE IF NOT EXISTS distance(
-    source_file_id  INT,
-    before_id       INT,
-    levenshtein     INT,
-    PRIMARY KEY (source_file_id, before_id)
-);
-
-CREATE TABLE IF NOT EXISTS edit(
-    source_file_id  INT,
-    before_id       INT,
-
-    edit            TEXT,
-    position        INT,
-    new_token       TEXT,
-
-    PRIMARY KEY (source_file_id, before_id)
-);
-"""
+from mistakes import Mistakes, Mistake
+from mistakes import Edit, EditType, Insertion, Deletion, Substitution
 
 
 # Supplementary Private Use Area B
 PUA_B_START = 0x100000
-
-
-class Mistake:
-    """
-    Represents a mistkae in the database.
-    """
-    def __init__(self, sfid: SFID, meid: MEID,
-                 before: bytes, after: bytes) -> None:
-        self.sfid = sfid
-        self.meid = meid
-        self.before = before
-        self.after = after
-
-
-class EditType:
-    """
-    Symbolic constants for Insertion, Deletion, and Substitution.
-    """
-    def __repr__(self) -> str:
-        return type(self).__name__
-
-
-Insertion = type('Insertion', (EditType,), {})()
-Deletion = type('Deletion', (EditType,), {})()
-Substitution = type('Substitution', (EditType,), {})()
 
 
 def to_edit_type(name: str) -> EditType:
@@ -105,59 +53,6 @@ def to_edit_type(name: str) -> EditType:
         'delete': Deletion
     }[name]
 
-
-# TODO: use Edit classes from sensibility?
-class Edit:
-    """
-    Represents an edit.
-    """
-    __slots__ = 'type', 'position', 'new_token'
-
-    def __init__(self, type_name: EditType, position: int,
-                 new_token: Optional[Vind]) -> None:
-        self.type = type_name
-        self.position = position
-        self.new_token = new_token
-
-
-# TODO: factor out with class from verify-pair?
-class Mistakes(Iterable[Mistake]):
-    """
-    Access to the mistake database.
-    """
-    def __init__(self, conn: sqlite3.Connection) -> None:
-        self.conn = conn
-        self.conn.executescript(SCHEMA)
-
-    def __iter__(self) -> Iterator[Mistake]:
-        query = 'SELECT source_file_id, before_id, before, after FROM mistake'
-        for row in self.conn.execute(query):
-            yield Mistake(*row)
-
-    @property
-    def eligible_mistakes(self) -> Iterator[Mistake]:
-        query = '''
-            SELECT source_file_id, before_id, before, after
-            FROM mistake NATURAL JOIN distance
-            WHERE levenshtein = 1
-            '''
-        for row in self.conn.execute(query):
-            yield Mistake(*row)
-
-    def insert_distance(self, m: Mistake, dist: int) -> None:
-        with self.conn:
-            self.conn.execute('''
-                INSERT INTO distance(source_file_id, before_id, levenshtein)
-                VALUES (?, ?, ?)
-            ''', (m.sfid, m.meid, dist))
-
-    def insert_edit(self, m: Mistake, edit: Edit) -> None:
-        with self.conn:
-            self.conn.execute('''
-                INSERT INTO edit(source_file_id, before_id, edit, position,
-                new_token)
-                VALUES (?, ?, ?)
-            ''', (m.sfid, m.meid, dist))
 
 def tokens2seq(tokens: Iterable[Lexeme],
                to_index=vocabulary.to_index,
