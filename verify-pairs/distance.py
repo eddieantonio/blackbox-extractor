@@ -82,7 +82,23 @@ def tokenwise_distance(file_a: bytes, file_b: bytes) -> int:
     return distance(seq_a, seq_b)
 
 
+class FixEvent:
+    """
+    A fix event is a collection of the edit that converts a file from good
+    syntax to syntax error (the edit); from bad syntax to good syntax (the
+    fix); and the line number of the token affected.
+    """
+    def __init__(self, edit: Edit, fix: Edit, line_no: int) -> None:
+        self.edit = edit
+        self.fix = fix
+        self.line_no = line_no
+
+
 def determine_edit(file_a: bytes, file_b: bytes) -> Edit:
+    return determine_fix_event(file_a, file_b).edit
+
+
+def determine_fix_event(file_a: bytes, file_b: bytes) -> FixEvent:
     """
     For two source files with Levenshtein distance of one, this returns the
     edit that converts the first file into the second file.
@@ -97,8 +113,9 @@ def determine_edit(file_a: bytes, file_b: bytes) -> Edit:
     (type_name, src_pos, dest_pos), = ops
     edit_type = to_edit_type(type_name)
     new_token = None if edit_type is Deletion else from_pua(dest[dest_pos])
+    edit = Edit(edit_type, dest_pos, new_token)
 
-    return Edit(edit_type, dest_pos, new_token)
+    return FixEvent(edit, edit, 0)
 
 
 def index_of(token: str) -> Vind:

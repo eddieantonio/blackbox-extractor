@@ -18,6 +18,7 @@
 import sqlite3
 from typing import Iterable, Iterator, NewType, Optional, Tuple
 
+# TODO: CONSULT EDIT CLASS IN SENSIBILITY WHEN DOING THIS!
 from vocabulary import Vind
 
 
@@ -40,9 +41,18 @@ CREATE TABLE IF NOT EXISTS edit(
     source_file_id  INT,
     before_id       INT,
 
-    edit            TEXT,
-    position        INT,
+    -- Line number of the error.
+    line_no         INT NOT NULL,
+
+    -- How to go from the good file to the bad file.
+    edit            TEXT NOT NULL,
+    position        INT NOT NULL,
     new_token       TEXT,
+
+    -- How to go from the bad file to the good file.
+    fix             TEXT NOT NULL,
+    position        TEXT NOT NULL,
+    new_tok         TEXT,
 
     PRIMARY KEY (source_file_id, before_id)
 );

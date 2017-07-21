@@ -31,7 +31,7 @@ except ImportError:
 
 from mistakes import Mistakes, Mistake
 from mistakes import Edit, EditType, Insertion, Deletion, Substitution
-from distance import determine_edit
+from distance import determine_fix_event
 
 
 if __name__ == '__main__':
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     mistakes = Mistakes(conn)
     for mistake in tqdm(mistakes.eligible_mistakes):
         try:
-            edit = determine_edit(mistake.before, mistake.after)
-        except:
+            edit = determine_fix_event(mistake.before, mistake.after).edit
+        except Exception:
             logger.exception('Error determining distance of %s', mistake)
         mistakes.insert_edit(mistake, edit)
