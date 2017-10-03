@@ -143,6 +143,8 @@ def good_pair(before: bytes, after: bytes) -> bool:
     except Exception:
         # Javalang has bugs and will throw on some valid inputs, so just
         # reject the pair if this is the case.
+        logger = logging.getLogger('good_pair')
+        logger.exception('Exception handling files')
         return False
 
 
@@ -224,6 +226,27 @@ def test():
     assert not good_pair(bad_source, bad_source)
     assert not good_pair(good_source, good_source)
     assert not good_pair(good_source, bad_source)
+
+    # Weird regression: this is a single character transposition,
+    # but the tokenizer gets lost.
+    bad_source = r"""
+    class Hello {
+        void whatever() {
+            dd.setTekst('\n+'"Draw");
+        }
+    }
+    """
+    good_source = r"""
+    class Hello {
+        void whatever() {
+            dd.setTekst('\n'+"Draw");
+        }
+    }
+    """
+    assert not java.check_syntax(bad_source)
+    assert java.check_syntax(good_source)
+    # It technically is a good pair!
+    assert good_pair(bad_source, good_source)
 
 
 def main():
