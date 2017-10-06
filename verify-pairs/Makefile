@@ -10,7 +10,7 @@ all:
 distance:
 	./distance.py
 
-#; edit - populate edit table.
+#; edit - populate edit table: prereq: distance.
 .PHONY: distance
 edit:
 	./find_edit.py

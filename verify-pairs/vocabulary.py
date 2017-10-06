@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from typing import Any, Dict, Iterable, List, NewType, Sequence, Sized, Tuple
 from typing import cast
 
@@ -60,7 +61,13 @@ class Vocabulary(Sized):
         return self._index2text[index]
 
     def to_index(self, text: str) -> Vind:
-        return self._text2index[text]
+        try:
+            return self._text2index[text]
+        except KeyError:
+            # Unks **SHOULD** only apply to error tokens...
+            if text != '<ERROR>':
+                warnings.warn(f'Token converted to <unk>: {text!r}')
+            return self.unk_token_index
 
     def __len__(self) -> int:
         return len(self._index2text)
@@ -80,19 +87,22 @@ class Vocabulary(Sized):
     end_token = END_TOKEN
 
 
-vocabulary = Vocabulary(["!", "!=", "%", "%=", "&", "&&", "&=", "(", ")", "*",
-                         "*=", "+", "++", "+=", ",", "-", "--", "-=", "->",
-                         ".", "...", "/", "/=", ":", "::", ";", "<", "<<",
-                         "<<=", "<=", "<IDENTIFIER>", "<NUMBER>", "<STRING>",
-                         "=", "==", ">", ">=", ">>=", ">>>=", "?", "@", "[",
-                         "]", "^", "^=", "abstract", "assert", "boolean",
-                         "break", "byte", "case", "catch", "char", "class",
-                         "const", "continue", "default", "do", "double", "else",
+vocabulary = Vocabulary(["^", "^=", "~", "<", "<<", "<<=", "<=", "=", "==",
+                         ">", ">=", ">>", ">>=", ">>>", ">>>=", "|", "|=",
+                         "||", "-", "-=", "->", "--", ",", ";", ":", "::", "!",
+                         "!=", "?", "/", "/=", ".", "...", "(", ")", "[", "]",
+                         "{", "}", "@", "*", "*=", "&", "&=", "&&", "%", "%=",
+                         "+", "+=", "++", "abstract", "assert", "boolean",
+                         "break", "byte", "case", "catch", "char",
+                         "<CHARLITERAL>", "class", "const", "continue",
+                         "default", "do", "double", "<DOUBLELITERAL>", "else",
                          "enum", "extends", "false", "final", "finally",
-                         "float", "for", "if", "goto", "implements", "import",
-                         "instanceof", "int", "interface", "long", "native",
-                         "new", "null", "package", "private", "protected",
-                         "public", "return", "short", "static", "strictfp",
-                         "super", "switch", "synchronized", "this", "throw",
-                         "throws", "transient", "true", "try", "void",
-                         "volatile", "while", "{", "|", "|=", "||", "}", "~"])
+                         "float", "<FLOATLITERAL>", "for", "goto",
+                         "<IDENTIFIER>", "if", "implements", "import",
+                         "instanceof", "int", "interface", "<INTLITERAL>",
+                         "long", "<LONGLITERAL>", "native", "new", "null",
+                         "package", "private", "protected", "public", "return",
+                         "short", "static", "strictfp", "<STRING>", "super",
+                         "switch", "synchronized", "this", "throw", "throws",
+                         "transient", "true", "try", "void", "volatile",
+                         "while"])
