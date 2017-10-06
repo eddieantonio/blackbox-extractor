@@ -22,7 +22,6 @@ Determines the Levenshtein distance between two source files.
 import sqlite3
 from typing import Iterable, Iterator, NewType, Optional, Tuple, cast
 
-from javalang.tokenizer import LexerError  # type: ignore
 from Levenshtein import distance, editops  # type: ignore
 
 # Use tqdm only if it's installed.
@@ -180,8 +179,5 @@ if __name__ == '__main__':
     conn.execute('PRAGMA synchronous = OFF')
     mistakes = Mistakes(conn)
     for mistake in tqdm(mistakes):
-        try:
-            dist = tokenwise_distance(mistake.before, mistake.after)
-        except LexerError:
-            continue
+        dist = tokenwise_distance(mistake.before, mistake.after)
         mistakes.insert_distance(mistake, dist)

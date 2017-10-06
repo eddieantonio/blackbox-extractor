@@ -181,7 +181,7 @@ def pairs() -> Iterable[Pair]:
             continue
 
 
-def test():
+def test_good_pair():
     bad_source = """
     class Hello {
     """
